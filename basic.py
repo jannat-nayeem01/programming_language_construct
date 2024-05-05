@@ -2,7 +2,7 @@
 # IMPORTS
 #######################################
 
-from strings_with_arrows import *
+from string_with_arrow import *
 
 import string
 
@@ -18,6 +18,8 @@ LETTERS_DIGITS = LETTERS + DIGITS
 # ERRORS
 #######################################
 
+
+#this is just the error calss which takes in the input and prints it out
 class Error:
 	def __init__(self, pos_start, pos_end, error_name, details):
 		self.pos_start = pos_start
@@ -31,18 +33,22 @@ class Error:
 		result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
 		return result
 
+#this error class is responsible to print a Illegal character during Lexer and tokenization
 class IllegalCharError(Error):
 	def __init__(self, pos_start, pos_end, details):
 		super().__init__(pos_start, pos_end, 'Illegal Character', details)
 
+#this error is basically used when we have context and then able to predict what is the next expected character
 class ExpectedCharError(Error):
 	def __init__(self, pos_start, pos_end, details):
 		super().__init__(pos_start, pos_end, 'Expected Character', details)
 
+#this class prints invalid syntax error basiccally during parsing
 class InvalidSyntaxError(Error):
 	def __init__(self, pos_start, pos_end, details=''):
 		super().__init__(pos_start, pos_end, 'Invalid Syntax', details)
 
+#this error is used in the case of evaluating the 
 class RTError(Error):
 	def __init__(self, pos_start, pos_end, details, context):
 		super().__init__(pos_start, pos_end, 'Runtime Error', details)
@@ -70,6 +76,7 @@ class RTError(Error):
 # POSITION
 #######################################
 
+#this class identifies where the error is using the postion
 class Position:
 	def __init__(self, idx, ln, col, fn, ftxt):
 		self.idx = idx
@@ -95,7 +102,10 @@ class Position:
 # TOKENS
 #######################################
 
-TT_INT				= 'INT'
+#this class basically defines the types of tokens
+
+#we define the types of tokens
+TT_INT			= 'INT'
 TT_FLOAT    	= 'FLOAT'
 TT_IDENTIFIER	= 'IDENTIFIER'
 TT_KEYWORD		= 'KEYWORD'
@@ -103,17 +113,17 @@ TT_PLUS     	= 'PLUS'
 TT_MINUS    	= 'MINUS'
 TT_MUL      	= 'MUL'
 TT_DIV      	= 'DIV'
-TT_POW				= 'POW'
-TT_EQ					= 'EQ'
+TT_POW			= 'POW'
+TT_EQ			= 'EQ'
 TT_LPAREN   	= 'LPAREN'
 TT_RPAREN   	= 'RPAREN'
-TT_EE					= 'EE'
-TT_NE					= 'NE'
-TT_LT					= 'LT'
-TT_GT					= 'GT'
-TT_LTE				= 'LTE'
-TT_GTE				= 'GTE'
-TT_EOF				= 'EOF'
+TT_EE			= 'EE'
+TT_NE			= 'NE'
+TT_LT			= 'LT'
+TT_GT			= 'GT'
+TT_LTE			= 'LTE'
+TT_GTE			= 'GTE'
+TT_EOF			= 'EOF'
 
 KEYWORDS = [
 	'VAR',
@@ -130,22 +140,27 @@ KEYWORDS = [
 	'THEN'
 ]
 
+#this class makes the tokens and represents(dsiplay them)
 class Token:
 	def __init__(self, type_, value=None, pos_start=None, pos_end=None):
 		self.type = type_
 		self.value = value
-
+		
+        #this is used to set position of start and end in case end is not given
 		if pos_start:
 			self.pos_start = pos_start.copy()
 			self.pos_end = pos_start.copy()
 			self.pos_end.advance()
-
+			
+        #used to set position if it is given
 		if pos_end:
 			self.pos_end = pos_end.copy()
 
+    #used to match the token to its type and return true if it is successfull
 	def matches(self, type_, value):
 		return self.type == type_ and self.value == value
 	
+	#representation
 	def __repr__(self):
 		if self.value: return f'{self.type}:{self.value}'
 		return f'{self.type}'
@@ -154,6 +169,7 @@ class Token:
 # LEXER
 #######################################
 
+#this class will parse the input line by line and make tokens
 class Lexer:
 	def __init__(self, fn, text):
 		self.fn = fn
@@ -161,14 +177,17 @@ class Lexer:
 		self.pos = Position(-1, 0, -1, fn, text)
 		self.current_char = None
 		self.advance()
-	
+		
+	#this function basically is used to point from present to next char in the input stream
 	def advance(self):
 		self.pos.advance(self.current_char)
 		self.current_char = self.text[self.pos.idx] if self.pos.idx < len(self.text) else None
 
 	def make_tokens(self):
+		#create a token list
 		tokens = []
 
+        #now lets match the string with the type and make the token and carry out tokenization
 		while self.current_char != None:
 			if self.current_char in ' \t':
 				self.advance()
@@ -215,7 +234,8 @@ class Lexer:
 
 		tokens.append(Token(TT_EOF, pos_start=self.pos))
 		return tokens, None
-
+	
+    #this is used to match and create a number incase there are more than once character that needs to be combined to form a single number
 	def make_number(self):
 		num_str = ''
 		dot_count = 0
@@ -227,12 +247,13 @@ class Lexer:
 				dot_count += 1
 			num_str += self.current_char
 			self.advance()
-
+        #if there is a dot it is float type
 		if dot_count == 0:
 			return Token(TT_INT, int(num_str), pos_start, self.pos)
 		else:
 			return Token(TT_FLOAT, float(num_str), pos_start, self.pos)
 
+    #this is for making the identifier or keyword
 	def make_identifier(self):
 		id_str = ''
 		pos_start = self.pos.copy()
@@ -244,6 +265,7 @@ class Lexer:
 		tok_type = TT_KEYWORD if id_str in KEYWORDS else TT_IDENTIFIER
 		return Token(tok_type, id_str, pos_start, self.pos)
 
+    #this function is used to find if it is not or Not equals
 	def make_not_equals(self):
 		pos_start = self.pos.copy()
 		self.advance()
@@ -254,7 +276,8 @@ class Lexer:
 
 		self.advance()
 		return None, ExpectedCharError(pos_start, self.pos, "'=' (after '!')")
-	
+    
+    #this will make you differenciate and make token that is either equal"= to or to check the "=="
 	def make_equals(self):
 		tok_type = TT_EQ
 		pos_start = self.pos.copy()
@@ -265,7 +288,8 @@ class Lexer:
 			tok_type = TT_EE
 
 		return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
-
+	
+    #this will make you differenciate and make token that is either less than "<" to or to check the "<=" less than equal to
 	def make_less_than(self):
 		tok_type = TT_LT
 		pos_start = self.pos.copy()
@@ -277,6 +301,7 @@ class Lexer:
 
 		return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
+    #this will make you differenciate and make token that is either greater than ">" to or to check the ">=" greater than equal to
 	def make_greater_than(self):
 		tok_type = TT_GT
 		pos_start = self.pos.copy()
@@ -292,6 +317,7 @@ class Lexer:
 # NODES
 #######################################
 
+# thsi class has various nodes types 
 class NumberNode:
 	def __init__(self, tok):
 		self.tok = tok
@@ -371,6 +397,7 @@ class WhileNode:
 # PARSE RESULT
 #######################################
 
+#this Parse result is used to make sure if having a control of the error or success or a failure
 class ParseResult:
 	def __init__(self):
 		self.error = None
@@ -398,18 +425,21 @@ class ParseResult:
 # PARSER
 #######################################
 
+#we impliment the parsing rules with this section
 class Parser:
 	def __init__(self, tokens):
 		self.tokens = tokens
 		self.tok_idx = -1
 		self.advance()
 
+    #using this we see the tokens and can advance to the next token
 	def advance(self, ):
 		self.tok_idx += 1
 		if self.tok_idx < len(self.tokens):
 			self.current_tok = self.tokens[self.tok_idx]
 		return self.current_tok
 
+    #this is the method called by the run function implimenting the start of the Parse class
 	def parse(self):
 		res = self.expr()
 		if not res.error and self.current_tok.type != TT_EOF:
@@ -421,6 +451,7 @@ class Parser:
 
 	###################################
 
+    #this function defined on how to traverse a if_expr
 	def if_expr(self):
 		res = ParseResult()
 		cases = []
@@ -549,6 +580,7 @@ class Parser:
 
 		return res.success(ForNode(var_name, start_value, end_value, step_value, body))
 
+    #this function defined on how to traverse a While_expr
 	def while_expr(self):
 		res = ParseResult()
 
@@ -578,6 +610,7 @@ class Parser:
 
 		return res.success(WhileNode(condition, body))
 
+    #this function defined on how to traverse a atom rule in grammer 
 	def atom(self):
 		res = ParseResult()
 		tok = self.current_tok
@@ -627,9 +660,11 @@ class Parser:
 			"Expected int, float, identifier, '+', '-', '('"
 		))
 
+    #used to traverse the power rule in the language grammer
 	def power(self):
 		return self.bin_op(self.atom, (TT_POW, ), self.factor)
 
+    #used to traverse the factor in the language grammer
 	def factor(self):
 		res = ParseResult()
 		tok = self.current_tok
@@ -643,12 +678,15 @@ class Parser:
 
 		return self.power()
 
+    #this is the function that will be used to traverse the term in the language grammer
 	def term(self):
 		return self.bin_op(self.factor, (TT_MUL, TT_DIV))
 
+    #this is the function that will be used to traverse the arith_expr in the language grammer
 	def arith_expr(self):
 		return self.bin_op(self.term, (TT_PLUS, TT_MINUS))
 
+    #this is the function that will be used to traverse the comp_expr in the language grammer
 	def comp_expr(self):
 		res = ParseResult()
 
@@ -671,6 +709,7 @@ class Parser:
 
 		return res.success(node)
 
+    #this is the function that will be used to traverse the expr in the language grammer
 	def expr(self):
 		res = ParseResult()
 
@@ -734,6 +773,8 @@ class Parser:
 # RUNTIME RESULT
 #######################################
 
+#similar to the Parse result
+ #this Run time result is used to make sure if having a control of the error success and failure at run time
 class RTResult:
 	def __init__(self):
 		self.value = None
@@ -755,12 +796,16 @@ class RTResult:
 # VALUES
 #######################################
 
+#so this class takes in the values of the tokens passed by the INTERPRETER class and then this class is returned to theri left and right child
 class Number:
 	def __init__(self, value):
+		#setting the value of the node
 		self.value = value
+		#calling the pos(position function)
 		self.set_pos()
 		self.set_context()
-
+		
+    #setting the value of the node
 	def set_pos(self, pos_start=None, pos_end=None):
 		self.pos_start = pos_start
 		self.pos_end = pos_end
@@ -785,6 +830,7 @@ class Number:
 	def dived_by(self, other):
 		if isinstance(other, Number):
 			if other.value == 0:
+				#since in the case of DIVIDE WE have to keep track and throw an error in case of the number divided with is Zero
 				return None, RTError(
 					other.pos_start, other.pos_end,
 					'Division by zero',
@@ -848,6 +894,7 @@ class Number:
 # CONTEXT
 #######################################
 
+#this is the class used to keep a track of the nodes parents, pos and name
 class Context:
 	def __init__(self, display_name, parent=None, parent_entry_pos=None):
 		self.display_name = display_name
@@ -859,20 +906,24 @@ class Context:
 # SYMBOL TABLE
 #######################################
 
+#this symbol table will store the name of the variable and its value and we can get it by using the get function 
 class SymbolTable:
 	def __init__(self):
 		self.symbols = {}
 		self.parent = None
-
+		
+    #and we can get it by using the get function
 	def get(self, name):
 		value = self.symbols.get(name, None)
 		if value == None and self.parent:
 			return self.parent.get(name)
 		return value
-
+	
+    #and we can set it by using the set function
 	def set(self, name, value):
 		self.symbols[name] = value
-
+		
+    #and we can remove or delete it by using the remove function
 	def remove(self, name):
 		del self.symbols[name]
 
@@ -880,22 +931,28 @@ class SymbolTable:
 # INTERPRETER
 #######################################
 
+#this is the class called when we get the parse tree with nodes specifying the order of their execurttion
+#this Interprester class will take the values from the nodes and then impliment the arethemeatic and comparisons operation 
+#and output the value using the Value section with Number class
 class Interpreter:
 	def visit(self, node, context):
 		method_name = f'visit_{type(node).__name__}'
 		method = getattr(self, method_name, self.no_visit_method)
 		return method(node, context)
-
+	
+    #post abriviation if no valid name is found or matched we will output no visit method
 	def no_visit_method(self, node, context):
 		raise Exception(f'No visit_{type(node).__name__} method defined')
 
 	###################################
-
+ 
+    #this is printed in the case we go through the number node
 	def visit_NumberNode(self, node, context):
 		return RTResult().success(
 			Number(node.tok.value).set_context(context).set_pos(node.pos_start, node.pos_end)
 		)
 
+    #this is the function used to access the node
 	def visit_VarAccessNode(self, node, context):
 		res = RTResult()
 		var_name = node.var_name_tok.value
@@ -910,7 +967,8 @@ class Interpreter:
 
 		value = value.copy().set_pos(node.pos_start, node.pos_end)
 		return res.success(value)
-
+	
+    #this is the function used to asign the node
 	def visit_VarAssignNode(self, node, context):
 		res = RTResult()
 		var_name = node.var_name_tok.value
@@ -919,14 +977,16 @@ class Interpreter:
 
 		context.symbol_table.set(var_name, value)
 		return res.success(value)
-
+	
+    #visited in case when the type of node is binary
 	def visit_BinOpNode(self, node, context):
 		res = RTResult()
 		left = res.register(self.visit(node.left_node, context))
 		if res.error: return res
 		right = res.register(self.visit(node.right_node, context))
 		if res.error: return res
-
+        
+        #is the tok.type is PLUS then we execute the plus similarly for all the operators
 		if node.op_tok.type == TT_PLUS:
 			result, error = left.added_to(right)
 		elif node.op_tok.type == TT_MINUS:
@@ -975,7 +1035,8 @@ class Interpreter:
 			return res.failure(error)
 		else:
 			return res.success(number.set_pos(node.pos_start, node.pos_end))
-
+		
+    #run in the case the node visited is ifnode node
 	def visit_IfNode(self, node, context):
 		res = RTResult()
 
@@ -995,6 +1056,7 @@ class Interpreter:
 
 		return res.success(None)
 
+    #run in the case the node visited is For node
 	def visit_ForNode(self, node, context):
 		res = RTResult()
 
@@ -1025,7 +1087,7 @@ class Interpreter:
 			if res.error: return res
 
 		return res.success(None)
-
+    #run in the case the node visited is while node
 	def visit_WhileNode(self, node, context):
 		res = RTResult()
 
